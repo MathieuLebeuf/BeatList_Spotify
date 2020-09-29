@@ -10,3 +10,5 @@ Import modules required:
 - requests
 - urllib.parse
 - json
+
+Need to create a app in the "https://developer.spotify.com/dashboard/login" to gain a client_id and client_secret.
