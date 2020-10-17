@@ -16,6 +16,7 @@ class SpotifyAPI(object):
     client_secret = None
     auth_code = None
     expires = datetime.datetime.now()
+    now = datetime.datetime.now()
     redirect_uri = 'https://github.com/'
     auth_url = 'https://accounts.spotify.com/authorize'
     token_url = 'https://accounts.spotify.com/api/token'
@@ -80,14 +81,14 @@ class SpotifyAPI(object):
         response = requests.post(token_url, headers=token_headers, data=token_data)
         if response.status_code in range(200, 299):
             token_response_data = response.json()
-            now = datetime.datetime.now()
+            self.now = datetime.datetime.now()
             self.access_token = token_response_data['access_token']
             self.refresh_token = token_response_data['refresh_token']
             expires_in = token_response_data['expires_in']
-            expires = now + datetime.timedelta(seconds=expires_in)
-            print("\nToken expires in: " + expires)
+            self.expires = self.now + datetime.timedelta(seconds=expires_in)
+            print("\nToken expires at: " + self.expires.strftime("%H:%M:%S"))
             return [True, self.access_token, self.refresh_token]
-        return None
+        return [False, None, None]
 
     def extract_current_user_id(self):
         headers = self.get_request_auth_header()
@@ -97,6 +98,8 @@ class SpotifyAPI(object):
         response_json = response.json()
 
         self.user_id = response_json['id']
+
+        return self.user_id
 
     def get_user_id(self):
         return self.user_id
@@ -135,20 +138,34 @@ class SpotifyAPI(object):
         response = requests.post(token_url, headers=token_headers, data=refresh_token_data)
         if response.status_code in range(200, 299):
             token_response_data = response.json()
-            now = datetime.datetime.now()
+            self.now = datetime.datetime.now()
             self.access_token = token_response_data['access_token']
             expires_in = token_response_data['expires_in']
-            self.expires = now + datetime.timedelta(seconds=expires_in)
+            self.expires = self.now + datetime.timedelta(seconds=expires_in)
+            print("\nToken expires at: " + self.expires.strftime("%H:%M:%S"))
             return self.access_token
+        else:
+            return None
 
-    def extract_saved_tracks_IDs(self):
-        query = 'https://api.spotify.com/v1/me/tracks'
+    def is_expire(self):
+        now = self.now
+        expires = self.expires
+        return now > expires
+
+    def extract_tracks_IDs_from_playlist(self, playlist_ID):
+
         tracks_IDs_list = list()
+        playlist_ID = playlist_ID
+
+        query = 'https://api.spotify.com/v1/playlists/'f'{playlist_ID}''/tracks'
+
+        offset = '0'
 
         headers = self.get_request_auth_header()
 
         params = (
-            ('limit', '50'),
+            ('limit', '100'),
+            ('offset', offset),
         )
 
         response = requests.get(query, headers=headers, params=params)
@@ -158,7 +175,27 @@ class SpotifyAPI(object):
 
         return tracks_IDs_list
 
-    def extract_library_albums_IDs(self):
+    def extract_saved_tracks_IDs(self):
+        query = 'https://api.spotify.com/v1/me/tracks'
+        tracks_IDs_list = list()
+
+        offset = '0'
+
+        headers = self.get_request_auth_header()
+
+        params = (
+            ('limit', '50'),
+            ('offset', '50'),
+        )
+
+        response = requests.get(query, headers=headers, params=params)
+        response_json = response.json()
+        for j in response_json['items']:
+            tracks_IDs_list.append(j['track']['id'])
+
+        return tracks_IDs_list
+
+    def extract_library_albums_IDs(self, offset=0):
         query = 'https://api.spotify.com/v1/me/albums'
         album_IDs_list = list()
 
@@ -166,6 +203,7 @@ class SpotifyAPI(object):
 
         params = (
             ('limit', '50'),
+            ('offset', offset),
         )
 
         response = requests.get(query, headers=headers, params=params)
@@ -184,8 +222,8 @@ class SpotifyAPI(object):
         headers = self.get_request_auth_header()
 
         params = (
-            ('limit', '50'),
-        )
+                    ('limit', '50'),
+                )
 
         for i in album_IDs_list:
             response = requests.get('https://api.spotify.com/v1/albums/'f'{i}''/tracks', headers=headers, params=params)
@@ -208,6 +246,24 @@ class SpotifyAPI(object):
             tracks_data.append(response_json)
 
         return tracks_data
+
+    def extract_list_of_user_playlist(self):
+        user_id = self.user_id
+        playlist_info = list()
+
+        query = 'https://api.spotify.com/v1/users/'f'{user_id}''/playlists'
+
+        headers = self.get_request_auth_header()
+
+        response = requests.get(query, headers=headers)
+        reponse_json = response.json()
+
+        if response.status_code in range(200, 299):
+            for item in reponse_json['items']:
+                playlist_info.append([item['name'], item['id']])
+            return playlist_info
+        else:
+            return None
 
     def create_a_playlist(self, playlist_name):
         playlist_name = playlist_name
