@@ -1,3 +1,12 @@
+"""
+Module for Spotify API GET and POST request.
+
+This module handle all the GET and POST request associated with the Spotify API.
+- It will fletch all the client information, access token, tracks URI, tracks data, etc.
+- It will request the creation of playlist and the request to add tracks to a playlist.
+
+"""
+
 import base64
 import datetime
 import requests
@@ -240,8 +249,8 @@ class SpotifyAPI(object):
 
         headers = self.get_request_auth_header()
 
-        for i in range(len(track_IDs_list)):
-            response = requests.get(query + f'{track_IDs_list[i]}', headers=headers)
+        for item in track_IDs_list:
+            response = requests.get(query + f'{item}', headers=headers)
             response_json = response.json()
             tracks_data.append(response_json)
 

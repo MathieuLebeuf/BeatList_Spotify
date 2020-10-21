@@ -58,12 +58,11 @@ def extract_track_by_parameter_and_value(tracks_data: List[Dict[str, Union[float
     tracks_data = list(tracks_data)
     lower_spec = value - value*tolerance
     upper_spec = value + value*tolerance
-    tracks_len = len(tracks_data)
     output_tracks = list()
 
-    for i in range(tracks_len):
-        if lower_spec <= tracks_data[i][parameter] <= upper_spec:
-            output_tracks.append(tracks_data[i])
+    for item in tracks_data:
+        if lower_spec <= item[parameter] <= upper_spec:
+            output_tracks.append(item)
 
     return output_tracks
 
@@ -78,10 +77,9 @@ def extract_tracks_URI_IDs(tracks_data: List[Dict[str, Union[float, str]]]) -> L
 
 def extract_stats_from_tracks(tracks_data: List[Dict[str, Union[float, str]]]) \
         -> Tuple[Dict[Any, Union[Optional[float], Any]], Dict[Any, Union[Union[float, None], Any]]]:
-    tracks_data = tracks_data
-    for i in range(len(tracks_data)):
-        tracks_data[i] = convert_values_to_float(tracks_data[i])
 
+    tracks_data = tracks_data
+    tracks_data[:] = [convert_values_to_float(item) for item in tracks_data]
     mean_dict_value = mean_dict(tracks_data)
     std_dict_value = std_dict(tracks_data)
 
@@ -122,7 +120,7 @@ def extract_parameter_list(tracks_data: List[Dict[str, Union[float, str]]]) -> L
     parameter_list = list()
 
     for key in tracks_data[0].keys():
-        if isinstance(tracks_data[0][key],float):
+        if isinstance(tracks_data[0][key], float):
             parameter_list.append(key)
 
     return parameter_list
