@@ -122,7 +122,7 @@ def extract_parameter_list(tracks_data: List[Dict[str, Union[float, str]]]) -> L
     parameter_list = list()
 
     for key in tracks_data[0].keys():
-        if is_float(tracks_data[0][key]):
+        if isinstance(tracks_data[0][key],float):
             parameter_list.append(key)
 
     return parameter_list
@@ -131,7 +131,7 @@ def extract_parameter_list(tracks_data: List[Dict[str, Union[float, str]]]) -> L
 def std_dict(dict_list: List[Dict[str, Union[float, str]]]) -> Dict[str, Union[float, None]]:
     std_dict_value = {}
     for key in dict_list[0].keys():
-        if is_float(dict_list[0][key]):
+        if isinstance(dict_list[0][key], float):
             std_dict_value[key] = statistics.stdev(d[key] for d in dict_list)
         else:
             std_dict_value[key] = None
@@ -141,19 +141,11 @@ def std_dict(dict_list: List[Dict[str, Union[float, str]]]) -> Dict[str, Union[f
 def mean_dict(dict_list: List[Dict[str, Union[float, str]]]) -> Dict[str, Union[float, None]]:
     mean_dict_values = {}
     for key in dict_list[0].keys():
-        if is_float(dict_list[0][key]):
+        if isinstance(dict_list[0][key], float):
             mean_dict_values[key] = sum(d[key] for d in dict_list) / len(dict_list)
         else:
             mean_dict_values[key] = None
     return mean_dict_values
-
-
-def is_float(to_test: vars) -> bool:
-    try:
-        float(to_test)
-        return True
-    except ValueError:
-        return False
 
 
 def convert_values_to_float(dict_data: Dict[str, Union[float, str]]) -> Dict[str, Union[float, str]]:
