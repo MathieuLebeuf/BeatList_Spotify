@@ -18,7 +18,7 @@ def convert_dataset_to_panda_dataframe(tracks_data: List[Dict[str, Union[float, 
 
     Parameters
     ----------
-    tracks_data : list(dict(str))
+    tracks_data: list(dict(str))
         dataset that need to be converted into panda dataframe
 
     Returns

@@ -1,13 +1,29 @@
-import os
+"""
+Main module for the BeatList project.
+
+This module handle the controller that handle all the request to the Spotify API, the data management and the data analysis.
+
+"""
+
 import beatlistController
 import sys
 
 
-def clear_interpreter():
-    os.system('cls' if os.name == 'nt' else 'clear')
+def generate_playlist_from_scratch(controller_beatlist: beatlistController.Controller):
+    """Generate playlist from raw dataset.
 
+    The module:
+        1. call the controller method to extract the required data from a source (load or Spotify).
+        2. call the controller method to filter the data based on a tempo.
+        3. call the controller method for the playlist creation (name and POST to Spotify API).
+        4. call the controller method to add tracks to the created playlist.
 
-def generate_playlist_from_scratch(controller_beatlist):
+    Parameters
+    ----------
+    controller_beatlist: beatlistController.Controller
+        controller for the project.
+
+    """
     controller_beatlist.extract_data_from_source()  # Extract tracks data from source (Spotify or local databse)
     controller_beatlist.extract_tracks_based_on_tempo()  # Extract tracks based on tempo.
     controller_beatlist.create_the_spotify_playlist()  # Send request to create the playlist with the tracks
@@ -21,6 +37,7 @@ def analyse_a_playlist(controller_beatlist): # Extracts all the tracks data of a
 
 
 def extract_stats_from_playlist():
+
     return
 
 
