@@ -1,45 +1,23 @@
+"""
+Controller for the handling of the extract, data and display.
+
+The Controller Class handle all calls for extraction, data saving, analysing, etc. The controller handle the SpotifyAPI, datamanager objetcs and the
+trackanalyser module.
+
+"""
+
 import spotifyAPI
 import datamanager
 import tracksanalyser
 import os
 import unicodedata
 
-"""
-Controller for the handling of the extract, data and display.
-
-The Controller Class handle all calls for extraction, data saving, analysing, etc. The controller handle the SpotifyAPI, datamanager objetcs and the 
-trackanalyser module.
-
-This module include
-==================  =============================================
-Function            Description
-==================  =============================================
-clear_interpreter   Clear the command interpreter for a better lisibility
-menu_list           Handle all the list choice to make in the command interpreter. Ask for a list of choice in a list of string. Return a choice number (int)
-==================  =============================================
-
-The class Controller include:
-==================                  =============================================
-Function                            Description
-==================                  =============================================
-__init__                            Initialise the datamanager object.
-get_credentials                     Handle the call to request the user credentials. First step of two for the Spotify API connexion
-get_authentification                Handle the call to authentify the user for all Spotify API call. Second step of two for the Spotify API connexion.
-request_refresh                     Handle the connexion refresh if the connexion is too old (authentification is good 1 hour).
-extract_user_id                     Return the user id from the SpotifyAPI object.
-create_the_spotify_playlist         Ask for a playlist name and call the SpotifyAPI object for the Spotify playlist creation.
-extract_data_from_source            Ask to choose a data base source and ask for the data extraction
-extract_data_from_spotify           Request the data extraction from Spotify based on the user choice. 
-extract_data_from_local_database    Request the data extraction from the local database.
-==================                  =============================================
-"""
-
 
 def clear_interpreter():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
-def menu_list(header="", menu_list=None):
+def menu_generator(header="", menu_list=None):
     if menu_list is None:
         menu_list = list()
     choice = 0
@@ -93,7 +71,7 @@ class Controller(object):
     # Constructor
     def __init__(self):
         self.data_manager = datamanager.DataManager()
-        connect = False
+        self.connect = False
 
     # Methods
     def get_credentials(self):  # look for credentials and ask for them.
@@ -163,7 +141,7 @@ class Controller(object):
     def extract_data_from_source(self):
 
         # The local tracks SQL database is to gain time if the data have already been extracted.
-        data_source_choice = menu_list(header="Do you want to extract from the local database or extract from Spotify?",
+        data_source_choice = menu_generator(header="Do you want to extract from the local database or extract from Spotify?",
                                        menu_list=['Local Database',
                                                   'Spotify Personnal Playlist',
                                                   'Spotify Liked Songs',
@@ -214,7 +192,7 @@ class Controller(object):
             playlist_info = self.spotify_API.extract_list_of_user_playlist()
             playlist_name = [info[0] for info in playlist_info]
             playlist_id = [info[1] for info in playlist_info]
-            choice = menu_list(header="From which playlist?", menu_list=playlist_name)
+            choice = menu_generator(header="From which playlist?", menu_list=playlist_name)
 
             track_IDs_list = self.spotify_API.extract_tracks_IDs_from_playlist(playlist_id[choice - 1])
             tracks_data = self.spotify_API.extract_tracks_data(track_IDs_list)
@@ -243,7 +221,7 @@ class Controller(object):
     def extract_data_from_local_database(self):
         self.data_manager.connect_to_database()
         table_name = self.data_manager.extract_all_table_name()
-        choice = menu_list(header="Which table?", menu_list=table_name)
+        choice = menu_generator(header="Which table?", menu_list=table_name)
         tracks_data = self.data_manager.read_all_tracks_data_table(table_name[choice - 1])
         self.data_manager.close_database()
         return tracks_data
@@ -253,8 +231,7 @@ class Controller(object):
 
         if self.data_manager.is_table_exist(table):
             header = "\nThe table: " + table + " exist. Do you want to flush the old data and replace it with new data?"
-            menu_list("Yes", "No")
-            choice = menu_list(header=header, menu_list=menu_list())
+            choice = menu_generator(header=header, menu_list=["Yes", "No"])
             if choice == 1:
                 self.data_manager.clear_all_data_from_table(table)
                 self.data_manager.write_tracks_data_to_table(table, data)

@@ -1,3 +1,10 @@
+"""
+Module for local data management.
+
+This module handle all the data extraction from the local files and local database.
+
+"""
+
 import pathlib
 import sqlite3
 
