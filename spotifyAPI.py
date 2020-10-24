@@ -290,26 +290,20 @@ class SpotifyAPI(object):
             'name': f'{playlist_name}',
             'public': False
         }
-        request_body = json.dumps(data)
 
-        response = requests.post(query, headers=headers, data=request_body)
+        try:
+            response = requests.post(query, headers=headers, json=data)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            return "Error: " + str(e)
+
         reponse_json = response.json()
-
-        if response.status_code in range(200, 299):
-            return reponse_json['id']
-        else:
-            return None
+        return reponse_json['id']
 
     def add_tracks_to_a_playlist(self, playlist_ID, track_URIs):
         track_URIs = track_URIs
         playlist_ID = playlist_ID
         access_token = self.access_token
-
-        data = {
-            'uris': track_URIs,
-        }
-
-        data_json = json.dumps(data)
 
         query = 'https://api.spotify.com/v1/playlists/'f'{playlist_ID}''/tracks'
 
@@ -318,9 +312,40 @@ class SpotifyAPI(object):
             'Accept': 'application/json',
         }
 
-        response = requests.post(query, data=data_json, headers=headers)
+        data = {
+            'uris': track_URIs,
+        }
 
-        if response.status_code in range(200, 299):
+        try:
+            response = requests.post(query, headers=headers, json=data)
+            response.raise_for_status()
             return True
-        else:
+        except requests.exceptions.HTTPError as e:
             return False
+
+    def is_user_playlist_name_exist(self, playlist_name):
+        playlist_info = self.extract_list_of_user_playlist()
+
+        for item in playlist_info:
+            if item[0] == playlist_name:
+                return True
+
+        return False
+
+    def is_user_playlist_ID_exist(self, playlist_ID):
+        playlist_info = self.extract_list_of_user_playlist()
+
+        for item in playlist_info:
+            if item[1] == playlist_ID:
+                return True
+
+            return False
+
+    def get_playlist_ID(self, playlist_name):
+        playlist_info = self.extract_list_of_user_playlist()
+
+        for item in playlist_info:
+            if item[0] == playlist_name:
+                return item[1]
+
+        return "No_ID"

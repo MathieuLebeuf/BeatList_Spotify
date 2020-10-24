@@ -46,52 +46,60 @@ def save_tracks_to_database(controller_beatlist):
     # Save tracks to database
 
 
+def delete_table_from_database(controller_beatlist):
+    controller_beatlist.delete_table_from_local_database()
+
+
 def connexion_menu():
     controller_beatlist = beatlistController.Controller() # object that handle all other objects (Datamanager, SpotifyAPI, SongAnalyser) and handle all the logic.
     print("Welcome to BeatList. A program to analyse songs and create Spotify playlist based on inputs.")
     header_menu = 'Main Menu: '
-    menu_list = ['Connect', 'Exit']
-    choice = beatlistController.menu_list(header=header_menu, menu_list=menu_list)
+    menu_list = ['Connect']
 
-    if choice == 1:
-        print("\nLogin: ")
-        controller_beatlist.get_credentials()  # Looks for credentials and ask for them
-        controller_beatlist.get_authentification()  # Looks for authentification and ask it if not already granted.
-        if controller_beatlist.connect:
-            clear_interpreter()
-            print("\nCredentials and authentification granted.")
-            controller_beatlist.extract_user_id()
-            return controller_beatlist
-        else:
-            connexion_menu()
-    else:
-        sys.exit()
+    choice = 0
+    while 1 > choice or choice > len(menu_list) + 1:
+        choice = beatlistController.menu_generator(header=header_menu, menu_list=menu_list, exit_choice=True)
+        if choice == 1:
+            print("\nLogin: ")
+            controller_beatlist.get_credentials()  # Looks for credentials and ask for them
+            controller_beatlist.get_authentification()  # Looks for authentification and ask it if not already granted.
+            if controller_beatlist.connect:
+                beatlistController.clear_interpreter()
+                print("\nCredentials and authentification granted.")
+                controller_beatlist.extract_user_id()
+                return controller_beatlist
+            else:
+                connexion_menu()
+        elif choice == len(menu_list) + 1:
+            sys.exit()
 
 
 def main_menu(controller_beatlist):
     choice = 0
     header_menu = 'Main menu: '
-    menu_list = ['Save tracks to local database', 'Generate a playlist', 'Analyse a playlist', 'Exit']
-    while 1 > choice or choice > 4:
-        choice = beatlistController.menu_list(header=header_menu, menu_list=menu_list)
+    menu_list = ['Save tracks to local database', 'Delete a table from local database', 'Generate a playlist', 'Analyse a playlist']
+    while 1 > choice or choice > 5:
+        choice = beatlistController.menu_generator(header=header_menu, menu_list=menu_list, exit_choice=True)
 
     if choice == 1:
         save_tracks_to_database(controller_beatlist)
     elif choice == 2:
-        generate_playlist_from_scratch(controller_beatlist)
+        delete_table_from_database(controller_beatlist)
     elif choice == 3:
+        generate_playlist_from_scratch(controller_beatlist)
+    elif choice == 4:
         analyse_a_playlist(controller_beatlist)
-    return choice
+    elif choice == len(menu_list) + 1:
+        print('End of program')
+        sys.exit()
+
+    main_menu(controller_beatlist)
 
 
 def main():
     controller_beatlist = connexion_menu()
 
-    choice = 0
-    while choice != 4:
-        choice = main_menu(controller_beatlist)
-
-    print('End of program')
+    main_menu(controller_beatlist)
 
 
 if __name__ == "__main__":
