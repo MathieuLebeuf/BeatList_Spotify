@@ -94,12 +94,23 @@ class DataManager(object):
         self.conn.commit()
 
     def is_table_exist(self, table):
-        self.c.execute(f''' SELECT count(*) FROM sqlite_master WHERE type='table' AND name=' f'{table}' ''')
+        query = 'SELECT count(*) FROM sqlite_master WHERE type=\'table\' AND name=\'' + table + '\''
+        self.c.execute(query)
 
         # if the count is 1, then table exists
         if self.c.fetchone()[0] == 1:
             return True
         else:
+            return False
+
+    def drop_table(self, table):
+        query = 'DROP TABLE IF EXISTS ' + table
+
+        try:
+            self.c.execute(query)
+            self.conn.commit()
+            return True
+        except sqlite3.Error:
             return False
 
     def create_credentials_file(self):  # Create the creds file with defaults values.
