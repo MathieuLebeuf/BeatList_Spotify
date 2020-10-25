@@ -11,7 +11,6 @@ import base64
 import datetime
 import requests
 import urllib.parse
-import json
 
 
 class SpotifyAPI(object):
@@ -29,6 +28,7 @@ class SpotifyAPI(object):
     redirect_uri = 'https://github.com/'
     auth_url = 'https://accounts.spotify.com/authorize'
     token_url = 'https://accounts.spotify.com/api/token'
+    api_url = 'https://api.spotify.com/v1'
 
     # Constructor.
     def __init__(self, client_id, client_secret):
@@ -101,7 +101,7 @@ class SpotifyAPI(object):
 
     def extract_current_user_id(self):
         headers = self.get_request_auth_header()
-        query = 'https://api.spotify.com/v1/me'
+        query = self.api_url + '/me'
 
         response = requests.get(query, headers=headers)
         response_json = response.json()
@@ -134,7 +134,6 @@ class SpotifyAPI(object):
         redirect_uri_encoded = self.get_redirect_uri_encoded()
         full_auth_url = f'{auth_url}?client_id={client_id}&response_type=code&redirect_uri={redirect_uri_encoded}&' \
                         f'scope=playlist-modify-public%20playlist-modify-private%20user-library-read%20playlist-read-private'
-        r = requests.get(full_auth_url)
 
         print("Go to the following url on the browser and enter the code from the returned url: ")  # The request auth is the string after the code= in the URL.
         print("---  " + full_auth_url + "  ---")
@@ -166,16 +165,16 @@ class SpotifyAPI(object):
         tracks_IDs_list = list()
         playlist_ID = playlist_ID
 
-        query = 'https://api.spotify.com/v1/playlists/'f'{playlist_ID}''/tracks'
+        query = self.api_url + '/playlists/'f'{playlist_ID}''/tracks'
 
         offset = '0'
 
         headers = self.get_request_auth_header()
 
-        params = (
-            ('limit', '100'),
-            ('offset', offset),
-        )
+        params = {
+            'limit': '100',
+            'offset': offset,
+        }
 
         response = requests.get(query, headers=headers, params=params)
         response_json = response.json()
@@ -185,17 +184,17 @@ class SpotifyAPI(object):
         return tracks_IDs_list
 
     def extract_saved_tracks_IDs(self):
-        query = 'https://api.spotify.com/v1/me/tracks'
+        query = self.api_url + '/me/tracks'
         tracks_IDs_list = list()
 
         offset = '0'
 
         headers = self.get_request_auth_header()
 
-        params = (
-            ('limit', '50'),
-            ('offset', '50'),
-        )
+        params = {
+            'limit': '50',
+            'offset': '50',
+        }
 
         response = requests.get(query, headers=headers, params=params)
         response_json = response.json()
@@ -205,15 +204,15 @@ class SpotifyAPI(object):
         return tracks_IDs_list
 
     def extract_library_albums_IDs(self, offset=0):
-        query = 'https://api.spotify.com/v1/me/albums'
+        query = self.api_url + '/me/albums'
         album_IDs_list = list()
 
         headers = self.get_request_auth_header()
 
-        params = (
-            ('limit', '50'),
-            ('offset', offset),
-        )
+        params = {
+            'limit': '50',
+            'offset': offset,
+        }
 
         response = requests.get(query, headers=headers, params=params)
         response_json = response.json()
@@ -230,12 +229,12 @@ class SpotifyAPI(object):
 
         headers = self.get_request_auth_header()
 
-        params = (
-                    ('limit', '50'),
-                )
+        params = {
+                    'limit': '50',
+                }
 
         for i in album_IDs_list:
-            response = requests.get('https://api.spotify.com/v1/albums/'f'{i}''/tracks', headers=headers, params=params)
+            response = requests.get(self.api_url + '/albums/'f'{i}''/tracks', headers=headers, params=params)
             response_json = response.json()
             for j in response_json['items']:
                 tracks_IDs_list.append(j['id'])
@@ -244,7 +243,7 @@ class SpotifyAPI(object):
 
     def extract_tracks_data(self, track_IDs_list):
         track_IDs_list = track_IDs_list
-        query = 'https://api.spotify.com/v1/audio-features/'
+        query = self.api_url + '/audio-features/'
         tracks_data = list()
 
         headers = self.get_request_auth_header()
@@ -279,7 +278,7 @@ class SpotifyAPI(object):
         access_token = self.access_token
         user_id = self.user_id
 
-        query = 'https://api.spotify.com/v1/users/'f'{user_id}''/playlists'
+        query = self.api_url + '/users/'f'{user_id}''/playlists'
 
         headers = {
             'Authorization': 'Bearer ' f'{access_token}',
@@ -305,7 +304,7 @@ class SpotifyAPI(object):
         playlist_ID = playlist_ID
         access_token = self.access_token
 
-        query = 'https://api.spotify.com/v1/playlists/'f'{playlist_ID}''/tracks'
+        query = self.api_url + '/playlists/'f'{playlist_ID}''/tracks'
 
         headers = {
             'Authorization': 'Bearer 'f'{access_token}',
