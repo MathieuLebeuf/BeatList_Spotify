@@ -10,7 +10,39 @@ This module handle all the GET and POST request associated with the Spotify API.
 import base64
 import datetime
 import requests
+from requests.auth import HTTPBasicAuth
 import urllib.parse
+
+"""
+class BearerAuth(requests.auth.AuthBase):
+
+    def __init__(self, token):
+        self.token = token
+
+    def __call__(self, r):
+        r.headers['authorization'] = 'Bearer ' + self.token
+        return r
+"""
+
+class BasicAuth(requests.auth.AuthBase):
+
+    def __init__(self, client_id, client_secret):
+        self.client_id = client_id
+        self.client_secret = client_secret
+
+    def __call__(self, r):
+        r.headers['Authorization'] = 'basic ' + self.get_client_cred_b64()
+        return r
+
+    def get_client_cred_b64(self):  # API request to have client creds in a base64 encoded format.
+        client_id = self.client_id
+        client_secret = self.client_secret
+
+        if client_id is None or client_secret is None:
+            raise Exception("Need client id and client secret")
+        client_cred = f'{client_id}:{client_secret}'
+        client_cred_b64 = base64.b64encode(client_cred.encode())
+        return client_cred_b64.decode()
 
 
 class SpotifyAPI(object):
@@ -29,32 +61,19 @@ class SpotifyAPI(object):
     auth_url = 'https://accounts.spotify.com/authorize'
     token_url = 'https://accounts.spotify.com/api/token'
     api_url = 'https://api.spotify.com/v1'
+    bearer_auth = None
+    basic_auth = None
 
-    # Constructor.
     def __init__(self, client_id, client_secret):
         self.client_id = client_id
         self.client_secret = client_secret
+        self.basic_auth = BasicAuth(self.client_id, self.client_secret)
 
     # Methods.
-    def get_client_cred_b64(self):  # API request to have client creds in a base64 encoded format.
-        client_id = self.client_id
-        client_secret = self.client_secret
-
-        if client_id is None or client_secret is None:
-            raise Exception("Need client id and client secret")
-        client_cred = f'{client_id}:{client_secret}'
-        client_cred_b64 = base64.b64encode(client_cred.encode())
-        return client_cred_b64.decode()
 
     def get_redirect_uri_encoded(self):
         redirect_uri = self.redirect_uri
         return urllib.parse.quote(redirect_uri)
-
-    def get_token_headers(self):
-        client_creds_b64 = self.get_client_cred_b64()  # <base64 encoded client_id:client_secret>
-        return {
-            'Authorization': f'basic {client_creds_b64}'
-        }
 
     def get_token_data(self):
         grant_type = 'authorization_code'
@@ -76,18 +95,25 @@ class SpotifyAPI(object):
         }
         return token_data
 
-    def get_request_auth_header(self):
-        access_token = self.access_token
-        headers = {
-            'Authorization': 'Bearer ' f'{access_token}',
-        }
-        return headers
+    def get_GET_session(self):
+        sess = requests.Session()
+        sess.headers['Authorization'] = 'Bearer ' f'{self.access_token}'
+
+        return sess
+
+    def get_POST_session(self):
+
+        sess = requests.Session()
+        sess.headers['Authorization'] = 'Bearer ' f'{self.access_token}'
+        sess.headers['Content-Type'] = 'application/json'
+
+        return sess
 
     def extract_access_token(self):
         token_url = self.token_url
         token_data = self.get_token_data()
-        token_headers = self.get_token_headers()
-        response = requests.post(token_url, headers=token_headers, data=token_data)
+        response = requests.post(token_url, auth=self.basic_auth, data=token_data)
+
         if response.status_code in range(200, 299):
             token_response_data = response.json()
             self.now = datetime.datetime.now()
@@ -100,10 +126,11 @@ class SpotifyAPI(object):
         return [False, None, None]
 
     def extract_current_user_id(self):
-        headers = self.get_request_auth_header()
         query = self.api_url + '/me'
 
-        response = requests.get(query, headers=headers)
+        sess = self.get_GET_session()
+
+        response = sess.get(query)
         response_json = response.json()
 
         self.user_id = response_json['id']
@@ -142,8 +169,7 @@ class SpotifyAPI(object):
     def refresh(self):
         token_url = self.token_url
         refresh_token_data = self.get_refresh_token_data()
-        token_headers = self.get_token_headers()
-        response = requests.post(token_url, headers=token_headers, data=refresh_token_data)
+        response = requests.post(token_url, auth=self.basic_auth, data=refresh_token_data)
         if response.status_code in range(200, 299):
             token_response_data = response.json()
             self.now = datetime.datetime.now()
@@ -167,16 +193,16 @@ class SpotifyAPI(object):
 
         query = self.api_url + '/playlists/'f'{playlist_ID}''/tracks'
 
-        offset = '0'
+        sess = self.get_GET_session()
 
-        headers = self.get_request_auth_header()
+        offset = '0'
 
         params = {
             'limit': '100',
             'offset': offset,
         }
 
-        response = requests.get(query, headers=headers, params=params)
+        response = sess.get(query, params=params)
         response_json = response.json()
         for j in response_json['items']:
             tracks_IDs_list.append(j['track']['id'])
@@ -187,16 +213,14 @@ class SpotifyAPI(object):
         query = self.api_url + '/me/tracks'
         tracks_IDs_list = list()
 
-        offset = '0'
-
-        headers = self.get_request_auth_header()
+        sess = self.get_GET_session()
 
         params = {
             'limit': '50',
             'offset': '50',
         }
 
-        response = requests.get(query, headers=headers, params=params)
+        response = sess.get(query, params=params)
         response_json = response.json()
         for j in response_json['items']:
             tracks_IDs_list.append(j['track']['id'])
@@ -207,14 +231,14 @@ class SpotifyAPI(object):
         query = self.api_url + '/me/albums'
         album_IDs_list = list()
 
-        headers = self.get_request_auth_header()
+        sess = self.get_GET_session()
 
         params = {
             'limit': '50',
             'offset': offset,
         }
 
-        response = requests.get(query, headers=headers, params=params)
+        response = sess.get(query, params=params)
         response_json = response.json()
         album_items = response_json['items']
 
@@ -227,14 +251,14 @@ class SpotifyAPI(object):
         album_IDs_list = album_IDs_list
         tracks_IDs_list = list()
 
-        headers = self.get_request_auth_header()
+        sess = self.get_GET_session()
 
         params = {
                     'limit': '50',
                 }
 
         for i in album_IDs_list:
-            response = requests.get(self.api_url + '/albums/'f'{i}''/tracks', headers=headers, params=params)
+            response = sess.get(self.api_url + '/albums/'f'{i}''/tracks', params=params)
             response_json = response.json()
             for j in response_json['items']:
                 tracks_IDs_list.append(j['id'])
@@ -246,10 +270,10 @@ class SpotifyAPI(object):
         query = self.api_url + '/audio-features/'
         tracks_data = list()
 
-        headers = self.get_request_auth_header()
+        sess = self.get_GET_session()
 
         for item in track_IDs_list:
-            response = requests.get(query + f'{item}', headers=headers)
+            response = sess.get(query + f'{item}')
             response_json = response.json()
             tracks_data.append(response_json)
 
@@ -261,9 +285,9 @@ class SpotifyAPI(object):
 
         query = 'https://api.spotify.com/v1/users/'f'{user_id}''/playlists'
 
-        headers = self.get_request_auth_header()
+        sess = self.get_GET_session()
 
-        response = requests.get(query, headers=headers)
+        response = sess.get(query)
         reponse_json = response.json()
 
         if response.status_code in range(200, 299):
@@ -275,23 +299,19 @@ class SpotifyAPI(object):
 
     def create_a_playlist(self, playlist_name):
         playlist_name = playlist_name
-        access_token = self.access_token
         user_id = self.user_id
 
         query = self.api_url + '/users/'f'{user_id}''/playlists'
-
-        headers = {
-            'Authorization': 'Bearer ' f'{access_token}',
-            'Content-Type': 'application/json'
-        }
 
         data = {
             'name': f'{playlist_name}',
             'public': False
         }
 
+        sess = self.get_POST_session()
+
         try:
-            response = requests.post(query, headers=headers, json=data)
+            response = sess.post(query, json=data)
             response.raise_for_status()
         except requests.exceptions.HTTPError as e:
             return "Error: " + str(e)
@@ -302,21 +322,17 @@ class SpotifyAPI(object):
     def add_tracks_to_a_playlist(self, playlist_ID, track_URIs):
         track_URIs = track_URIs
         playlist_ID = playlist_ID
-        access_token = self.access_token
 
         query = self.api_url + '/playlists/'f'{playlist_ID}''/tracks'
-
-        headers = {
-            'Authorization': 'Bearer 'f'{access_token}',
-            'Accept': 'application/json',
-        }
 
         data = {
             'uris': track_URIs,
         }
 
+        sess = self.get_POST_session()
+
         try:
-            response = requests.post(query, headers=headers, json=data)
+            response = sess.post(query, json=data)
             response.raise_for_status()
             return True
         except requests.exceptions.HTTPError as e:

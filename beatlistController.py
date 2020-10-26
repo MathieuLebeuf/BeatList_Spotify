@@ -188,7 +188,7 @@ class Controller(object):
                     clear_interpreter()
                     choice = input("\nDo you want to save the data in the local database? (Y/N): ")
                 if choice.upper() == 'Y':
-                    table = 'playlist_' + strip_accents(playlist_name.replace(" ", "_"))
+                    table = 'playlist_' + strip_accents(playlist_name.replace(" ", "_").replace("-", "_"))
                     self.save_data_to_local_database(table, self.tracks_data)
 
             elif data_source_choice == 3:
