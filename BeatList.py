@@ -24,16 +24,16 @@ def generate_playlist_from_scratch(controller_beatlist: beatlistController.Contr
         controller for the project.
 
     """
-    controller_beatlist.extract_data_from_source()  # Extract tracks data from source (Spotify or local databse)
-    controller_beatlist.extract_tracks_based_on_tempo()  # Extract tracks based on tempo.
-    controller_beatlist.create_the_spotify_playlist()  # Send request to create the playlist with the tracks
-    controller_beatlist.add_tracks_to_playlist()  # Send request to add tracks to the playlist
+    if controller_beatlist.extract_data_from_source():  # Extract tracks data from source (Spotify or local databse)
+        controller_beatlist.extract_tracks_based_on_tempo()  # Extract tracks based on tempo.
+        controller_beatlist.create_the_spotify_playlist()  # Send request to create the playlist with the tracks
+        controller_beatlist.add_tracks_to_playlist()  # Send request to add tracks to the playlist
 
 
-def analyse_a_playlist(controller_beatlist): # Extracts all the tracks data of a playlist and give the general stats of the server. Show a box plot graph of the stats
-    controller_beatlist.extract_data_from_source()  # Extract data from source (Spotify or local databse)
-    controller_beatlist.analyse_tracks_data()
-    controller_beatlist.generate_graph_for_statistic()
+def analyse_a_playlist(controller_beatlist):  # Extracts all the tracks data of a playlist and give the general stats of the server. Show a box plot graph of the stats
+    if controller_beatlist.extract_data_from_source():  # Extract data from source (Spotify or local databse)
+        controller_beatlist.analyse_tracks_data()
+        controller_beatlist.generate_graph_for_statistic()
 
 
 def extract_stats_from_playlist():
@@ -51,7 +51,7 @@ def delete_table_from_database(controller_beatlist):
 
 
 def connexion_menu():
-    controller_beatlist = beatlistController.Controller() # object that handle all other objects (Datamanager, SpotifyAPI, SongAnalyser) and handle all the logic.
+    controller_beatlist = beatlistController.Controller()  # object that handle all other objects (Datamanager, SpotifyAPI, SongAnalyser) and handle all the logic.
     print("Welcome to BeatList. A program to analyse songs and create Spotify playlist based on inputs.")
     header_menu = 'Main Menu: '
     menu_list = ['Connect']

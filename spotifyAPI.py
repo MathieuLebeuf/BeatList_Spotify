@@ -12,17 +12,8 @@ import datetime
 import requests
 from requests.auth import HTTPBasicAuth
 import urllib.parse
+import time
 
-"""
-class BearerAuth(requests.auth.AuthBase):
-
-    def __init__(self, token):
-        self.token = token
-
-    def __call__(self, r):
-        r.headers['authorization'] = 'Bearer ' + self.token
-        return r
-"""
 
 class BasicAuth(requests.auth.AuthBase):
 
@@ -52,7 +43,7 @@ class SpotifyAPI(object):
     refresh_token = None
     access_token_expires = datetime.datetime.now()
     client_id = None
-    user_id = None
+    user_id = ''
     client_secret = None
     auth_code = None
     expires = datetime.datetime.now()
@@ -68,8 +59,6 @@ class SpotifyAPI(object):
         self.client_id = client_id
         self.client_secret = client_secret
         self.basic_auth = BasicAuth(self.client_id, self.client_secret)
-
-    # Methods.
 
     def get_redirect_uri_encoded(self):
         redirect_uri = self.redirect_uri
@@ -112,30 +101,40 @@ class SpotifyAPI(object):
     def extract_access_token(self):
         token_url = self.token_url
         token_data = self.get_token_data()
-        response = requests.post(token_url, auth=self.basic_auth, data=token_data)
+        output = [False, '', '']
 
-        if response.status_code in range(200, 299):
+        try:
+            response = requests.post(token_url, auth=self.basic_auth, data=token_data)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            print(e)
+        else:
             token_response_data = response.json()
             self.now = datetime.datetime.now()
             self.access_token = token_response_data['access_token']
             self.refresh_token = token_response_data['refresh_token']
+            output = [True, self.access_token, self.refresh_token]
             expires_in = token_response_data['expires_in']
             self.expires = self.now + datetime.timedelta(seconds=expires_in)
             print("\nToken expires at: " + self.expires.strftime("%H:%M:%S"))
-            return [True, self.access_token, self.refresh_token]
-        return [False, None, None]
+        finally:
+            return output
 
     def extract_current_user_id(self):
         query = self.api_url + '/me'
 
         sess = self.get_GET_session()
 
-        response = sess.get(query)
-        response_json = response.json()
-
-        self.user_id = response_json['id']
-
-        return self.user_id
+        try:
+            response = sess.get(query)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            print(e)
+        else:
+            response_json = response.json()
+            self.user_id = response_json['id']
+        finally:
+            return self.user_id
 
     def get_user_id(self):
         return self.user_id
@@ -169,17 +168,22 @@ class SpotifyAPI(object):
     def refresh(self):
         token_url = self.token_url
         refresh_token_data = self.get_refresh_token_data()
-        response = requests.post(token_url, auth=self.basic_auth, data=refresh_token_data)
-        if response.status_code in range(200, 299):
+
+        try:
+            response = requests.post(token_url, auth=self.basic_auth, data=refresh_token_data)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            self.access_token = ''
+            print(e)
+        else:
             token_response_data = response.json()
             self.now = datetime.datetime.now()
             self.access_token = token_response_data['access_token']
             expires_in = token_response_data['expires_in']
             self.expires = self.now + datetime.timedelta(seconds=expires_in)
             print("\nToken expires at: " + self.expires.strftime("%H:%M:%S"))
+        finally:
             return self.access_token
-        else:
-            return None
 
     def is_expire(self):
         now = self.now
@@ -202,12 +206,17 @@ class SpotifyAPI(object):
             'offset': offset,
         }
 
-        response = sess.get(query, params=params)
-        response_json = response.json()
-        for j in response_json['items']:
-            tracks_IDs_list.append(j['track']['id'])
-
-        return tracks_IDs_list
+        try:
+            response = sess.get(query, params=params)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            print(e)
+        else:
+            response_json = response.json()
+            for j in response_json['items']:
+                tracks_IDs_list.append(j['track']['id'])
+        finally:
+            return tracks_IDs_list
 
     def extract_saved_tracks_IDs(self):
         query = self.api_url + '/me/tracks'
@@ -220,12 +229,17 @@ class SpotifyAPI(object):
             'offset': '50',
         }
 
-        response = sess.get(query, params=params)
-        response_json = response.json()
-        for j in response_json['items']:
-            tracks_IDs_list.append(j['track']['id'])
-
-        return tracks_IDs_list
+        try:
+            response = sess.get(query, params=params)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            print(e)
+        else:
+            response_json = response.json()
+            for j in response_json['items']:
+                tracks_IDs_list.append(j['track']['id'])
+        finally:
+            return tracks_IDs_list
 
     def extract_library_albums_IDs(self, offset=0):
         query = self.api_url + '/me/albums'
@@ -238,14 +252,20 @@ class SpotifyAPI(object):
             'offset': offset,
         }
 
-        response = sess.get(query, params=params)
-        response_json = response.json()
-        album_items = response_json['items']
+        try:
+            response = sess.get(query, params=params)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            print(e)
+        else:
 
-        for i in album_items:
-            album_IDs_list.append(i['album']['id'])
+            response_json = response.json()
+            album_items = response_json['items']
 
-        return album_IDs_list
+            for i in album_items:
+                album_IDs_list.append(i['album']['id'])
+        finally:
+            return album_IDs_list
 
     def extract_tracks_IDs_from_album(self, album_IDs_list):
         album_IDs_list = album_IDs_list
@@ -258,24 +278,58 @@ class SpotifyAPI(object):
                 }
 
         for i in album_IDs_list:
-            response = sess.get(self.api_url + '/albums/'f'{i}''/tracks', params=params)
-            response_json = response.json()
-            for j in response_json['items']:
-                tracks_IDs_list.append(j['id'])
+            try:
+                response = sess.get(self.api_url + '/albums/'f'{i}''/tracks', params=params)
+                response.raise_for_status()
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == '429':
+                    time.sleep(int(e.response.header['retry-after']))
+                    try:
+                        response = sess.get(self.api_url + '/albums/'f'{i}''/tracks', params=params)
+                        response.raise_for_status()
+                    except requests.exceptions.HTTPError:
+                        print("Extraction stop because of error: " + e.response.reason)
+                        break
+                    else:
+                        response_json = response.json()
+                        for j in response_json['items']:
+                            tracks_IDs_list.append(j['id'])
+            else:
+                response_json = response.json()
+                for j in response_json['items']:
+                    tracks_IDs_list.append(j['id'])
 
         return tracks_IDs_list
 
     def extract_tracks_data(self, track_IDs_list):
         track_IDs_list = track_IDs_list
+        tracks_counter = len(track_IDs_list)
         query = self.api_url + '/audio-features/'
         tracks_data = list()
 
         sess = self.get_GET_session()
 
-        for item in track_IDs_list:
-            response = sess.get(query + f'{item}')
-            response_json = response.json()
-            tracks_data.append(response_json)
+        for i, item in enumerate(track_IDs_list):
+            try:
+                response = sess.get(query + f'{item}')
+                response.raise_for_status()
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == '429':
+                    time.sleep(int(e.response.headers['retry-after']))
+                    try:
+                        response = sess.get(query + f'{item}')
+                        response.raise_for_status()
+                    except requests.exceptions.HTTPError:
+                        print("Extraction stop because of error: " + e.response.text)
+                        break
+                    else:
+                        response_json = response.json()
+                        tracks_data.append(response_json)
+                        print("Extraction of track " + str(i+1) + " out of " + str(tracks_counter))
+            else:
+                response_json = response.json()
+                tracks_data.append(response_json)
+                print("Extraction of track " + str(i+1) + " out of " + str(tracks_counter), end='\r')
 
         return tracks_data
 
@@ -287,19 +341,28 @@ class SpotifyAPI(object):
 
         sess = self.get_GET_session()
 
-        response = sess.get(query)
-        reponse_json = response.json()
-
-        if response.status_code in range(200, 299):
+        try:
+            response = sess.get(query)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:
+                time.sleep(int(e.response.headers['retry-after']))
+                try:
+                    response = sess.get(query)
+                    response.raise_for_status()
+                except requests.exceptions.HTTPError:
+                    print("Extraction stop because of error: " + e.response.text)
+        else:
+            reponse_json = response.json()
             for item in reponse_json['items']:
                 playlist_info.append([item['name'], item['id']])
+        finally:
             return playlist_info
-        else:
-            return None
 
     def create_a_playlist(self, playlist_name):
         playlist_name = playlist_name
         user_id = self.user_id
+        playlist_id = ''
 
         query = self.api_url + '/users/'f'{user_id}''/playlists'
 
@@ -314,10 +377,12 @@ class SpotifyAPI(object):
             response = sess.post(query, json=data)
             response.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            return "Error: " + str(e)
-
-        reponse_json = response.json()
-        return reponse_json['id']
+            print(e)
+        else:
+            response_json = response.json()
+            playlist_id = response_json['id']
+        finally:
+            return playlist_id
 
     def add_tracks_to_a_playlist(self, playlist_ID, track_URIs):
         track_URIs = track_URIs
@@ -335,7 +400,7 @@ class SpotifyAPI(object):
             response = sess.post(query, json=data)
             response.raise_for_status()
             return True
-        except requests.exceptions.HTTPError as e:
+        except requests.exceptions.HTTPError:
             return False
 
     def is_user_playlist_name_exist(self, playlist_name):
@@ -363,4 +428,4 @@ class SpotifyAPI(object):
             if item[0] == playlist_name:
                 return item[1]
 
-        return "No_ID"
+        return ''
