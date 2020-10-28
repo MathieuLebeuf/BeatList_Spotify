@@ -19,18 +19,19 @@ def clear_interpreter():
 
 def menu_generator(header="", menu_list=None, exit_choice=False):
     if menu_list is None:
-        menu_list = list()
-    choice = 0
+        return -1
 
+    choice = 0
     while choice <= 0 or choice > len(menu_list) + 1 + int(exit_choice):
         print("\n" + Color.YELLOW + header + Color.END)
-        i = 1
+        i = 0
         for item in menu_list:
-            to_print = (str(i) + ") " + item)
-            i = i + 1
+            to_print = (str(i + 1) + ") " + item)
+
             print(to_print)
+            i = i + 1
         if exit_choice:
-            print(str(i) + ") Exit")
+            print(str(i + 1) + ") Exit")
         try:
             choice = int(input("\nChoice: "))
         except ValueError:
@@ -73,12 +74,12 @@ class Controller(object):
     songs_analyser = None
     client_ID = None
     client_secret = None
-    user_ID = None
+    user_ID = ''
     access_token = None
     refresh_token = None
     expires = None
     connect = None
-    tracks_data = None
+    tracks_data = list()
     output_data = None
     output_track_IDs = None
     playlist_ID = None
@@ -180,9 +181,15 @@ class Controller(object):
 
             elif data_source_choice == 2:  # Tracks data extraction from API request.
                 spotify_source_type = "playlist"
-                playlist_name, self.tracks_data = self.extract_data_from_spotify(spotify_source_type)
-                self.parameter_list = tracksanalyser.extract_parameter_list(self.tracks_data)
-                choice = ""
+
+                try:
+                    playlist_name, self.tracks_data = self.extract_data_from_spotify(spotify_source_type)
+                    self.parameter_list = tracksanalyser.extract_parameter_list(self.tracks_data)
+                except TypeError:
+                    self.tracks_data = list()
+                    return False
+                else:
+                    choice = ""
 
                 while choice.upper() != 'Y' and choice.upper() != 'N':  # Choice to replace the local SQL database with new data.
                     clear_interpreter()
@@ -194,7 +201,6 @@ class Controller(object):
             elif data_source_choice == 3:
                 spotify_source_type = "liked_tracks"
                 self.tracks_data = self.extract_data_from_spotify(spotify_source_type)
-                table = "liked_tacks"
                 choice = ""
                 while choice.upper() != 'Y' and choice.upper() != 'N':  # Choice to replace the local SQL database with new data.
                     clear_interpreter()
@@ -217,17 +223,23 @@ class Controller(object):
             elif data_source_choice == len(menu_list) + 1:
                 self.tracks_data = None
 
+        return True
+
     def extract_data_from_spotify(self, spotify_source_type):
         spotify_source_type = spotify_source_type
         if spotify_source_type == 'playlist':
             playlist_info = self.spotify_API.extract_list_of_user_playlist()
             playlist_name = [info[0] for info in playlist_info]
             playlist_id = [info[1] for info in playlist_info]
-            choice = menu_generator(header='From which playlist?', menu_list=playlist_name, exit_choice=True)
 
-            track_IDs_list = self.spotify_API.extract_tracks_IDs_from_playlist(playlist_id[choice - 1])
-            tracks_data = self.spotify_API.extract_tracks_data(track_IDs_list)
-            return playlist_name[choice - 1], tracks_data
+            choice = 0
+            while 1 > choice or choice > len(playlist_name) + 1:
+                choice = menu_generator(header='From which playlist?', menu_list=playlist_name, exit_choice=True)
+
+            if choice <= len(playlist_name):
+                track_IDs_list = self.spotify_API.extract_tracks_IDs_from_playlist(playlist_id[choice - 1])
+                tracks_data = self.spotify_API.extract_tracks_data(track_IDs_list)
+                return playlist_name[choice - 1], tracks_data
 
         elif spotify_source_type == 'liked_tracks':
             track_IDs = self.spotify_API.extract_saved_tracks_IDs()
@@ -235,14 +247,17 @@ class Controller(object):
             return tracks_data
 
         elif spotify_source_type == 'saved_albums':
+            album_counter = 0
             album_counts = 50
             offset = 0
             album_IDs_list = list()
             while album_counts == 50:
                 album_IDs_buff = self.spotify_API.extract_library_albums_IDs(offset=offset)
                 album_counts = len(album_IDs_buff)
+                album_counter = album_counter + album_counts
                 offset = offset + album_counts
                 album_IDs_list = album_IDs_list + album_IDs_buff
+            print("\nNumber of album extracted: " + str(album_counter))
             track_IDs = self.spotify_API.extract_tracks_IDs_from_album(album_IDs_list)
             tracks_data = self.spotify_API.extract_tracks_data(track_IDs)
             return tracks_data
@@ -273,16 +288,16 @@ class Controller(object):
 
     def delete_table_from_local_database(self):
         self.data_manager.connect_to_database()
-
+        table_name = self.data_manager.extract_all_table_name()
+        menu_list = table_name
+        choice_header = 'Which table do you want to delete?'
         choice = 0
         while 1 > choice or choice > len(menu_list) + 1:
-            table_name = self.data_manager.extract_all_table_name()
-            choice_header = 'Which table do you want to delete?'
-            choice = menu_generator(header=choice_header, menu_list=table_name, exit_choice=True)
+            choice = menu_generator(header=choice_header, menu_list=menu_list, exit_choice=True)
             if 0 < choice <= len(table_name):
                 choice_confirm_header = 'Are you sure you want to delete the table ' + table_name[choice - 1] + ' ?'
-                menu_list = ['Yes', 'No']
-                choice_confirm = menu_generator(header=choice_confirm_header, menu_list=menu_list)
+                menu_list_confirm = ['Yes', 'No']
+                choice_confirm = menu_generator(header=choice_confirm_header, menu_list=menu_list_confirm)
                 if choice_confirm == 1:
                     if self.data_manager.drop_table(table_name[choice - 1]):
                         print("Table " + table_name[choice - 1] + " have been deleted.")
@@ -297,19 +312,24 @@ class Controller(object):
         tracks_data = self.tracks_data
         if tracks_data is not None:
             tracks_dataframe = tracksanalyser.convert_dataset_to_panda_dataframe(tracks_data)
-            print("For which parameter do you want to display the boxplot: ")
-            print(self.parameter_list)
-            parameter = input("Parameter to analyse: ")
-            tracksanalyser.generate_histogram_for_stat(tracks_dataframe, parameter)
+            parameter = self.parameter_list
+            choice = 0
+            menu_list = parameter
+            header = 'For which parameter do you want to display the boxplot:'
+            while 1 > choice or choice > len(self.parameter_list):
+                choice = menu_generator(header=header, menu_list=menu_list, exit_choice=False)
+            tracksanalyser.generate_histogram_for_stat(tracks_dataframe, parameter[choice - 1])
         else:
             print("There is no data to plot.")
 
     def extract_tracks_based_on_tempo(self):
-        print("\nThe program will now sort the songs with the requested tempo (±10%): ")
-        tempo = input("Which tempo do you want: ")
         tracks_data = self.tracks_data
 
-        if tracks_data is not None:
+        if tracks_data:
+            print("\nThe program will now sort the songs with the requested tempo (±10%): ")
+            tempo = input("Which tempo do you want: ")
+            tracks_data = self.tracks_data
+
             # Sort tracks with the requested tempo.
             output_tracks = tracksanalyser.extract_track_by_parameter_and_value(tracks_data, 'tempo', float(tempo), 0.1)
             self.output_track_IDs = tracksanalyser.extract_tracks_URI_IDs(output_tracks)
@@ -328,12 +348,14 @@ class Controller(object):
             print("There is no data to analyse")
 
     def add_tracks_to_playlist(self):
-
-        if self.spotify_API.is_user_playlist_ID_exist(self.playlist_ID):
-            result = self.spotify_API.add_tracks_to_a_playlist(self.playlist_ID, self.output_track_IDs)
-            if result:
-                print("\nPlaylist generated successfully")
+        if self.playlist_ID:
+            if self.spotify_API.is_user_playlist_ID_exist(self.playlist_ID):
+                result = self.spotify_API.add_tracks_to_a_playlist(self.playlist_ID, self.output_track_IDs)
+                if result:
+                    print("\nPlaylist generated successfully")
+                else:
+                    print("\nPlaylist name exist but tracks have not been add to the playlist...")
             else:
-                print("\nPlaylist name exist but tracks have not been add to the playlist...")
+                print("\nPlaylist name don't not created...")
         else:
-            print("\nPlaylist name don't not created...")
+            print('You need to define a playlist name first.')
