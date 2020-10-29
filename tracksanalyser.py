@@ -119,17 +119,17 @@ def generate_boxplot_for_specific_stat(tracks_dataframe: pd.DataFrame, parameter
 def extract_parameter_list(tracks_data: List[Dict[str, Union[float, str]]]) -> List[str]:
     parameter_list = list()
 
-    for key, value in tracks_data[0].items():
-        if isinstance(value, float):
-            parameter_list.append(key)
+    for item in tracks_data[0].items():
+        if isinstance(item[1], float):
+            parameter_list.append(item[0])
 
     return parameter_list
 
 
 def std_dict(dict_list: List[Dict[str, Union[float, str]]]) -> Dict[str, Union[float, None]]:
     std_dict_value = {}
-    for key, value in dict_list[0].item():
-        if isinstance(value, float):
+    for key in dict_list[0].keys():
+        if isinstance(dict_list[0][key], float):
             std_dict_value[key] = round(statistics.stdev(d[key] for d in dict_list), 2)
         else:
             std_dict_value[key] = None
@@ -138,8 +138,8 @@ def std_dict(dict_list: List[Dict[str, Union[float, str]]]) -> Dict[str, Union[f
 
 def mean_dict(dict_list: List[Dict[str, Union[float, str]]]) -> Dict[str, Union[float, None]]:
     mean_dict_values = {}
-    for key, value in dict_list[0].items():
-        if isinstance(value, float):
+    for key in dict_list[0].keys():
+        if isinstance(dict_list[0][key], float):
             mean_dict_values[key] = round(sum(d[key] for d in dict_list) / len(dict_list), 2)
         else:
             mean_dict_values[key] = None
